@@ -6,5 +6,5 @@
     "test": "node --test tests/*.test.js",
     "gen-badges": "node scripts/gen-install-badges.js"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }
