@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Starsector Install with TriOS</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Relative paths so this page works standalone on GitHub Pages under any subpath -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><span class="material-icons">download</span> Install with TriOS</h1>
+    <p class="subtitle">Generate a one-click link that installs your mod through TriOS</p>
+  </header>
+
+  <main>
+    <section class="install-section">
+      <p class="section-desc">Make a one-click install button for your mod's forum post. Fill in the fields below, then copy the code into your post — anyone with TriOS can install your mod (and its dependencies) in one click.</p>
+
+      <ol class="how-to">
+        <li><strong>Your mod</strong> — paste the link to your mod's <code>.version</code> file (recommended: it auto-updates every release). No <code>.version</code> file? Paste a direct link to your mod's <code>.zip</code> download instead.</li>
+        <li><strong>Mod ID</strong> <span class="opt">(optional)</span> — the <code>id</code> value from your <code>mod_info.json</code>. Lets TriOS skip the mod if it's already installed.</li>
+        <li><strong>Dependencies</strong> <span class="opt">(optional)</span> — click <em>Add dependency</em> and paste each required mod's <code>.version</code> or <code>.zip</code> link. Each one can have its own ID.</li>
+        <li><strong>Copy &amp; paste</strong> — leave the format on <em>BBCode badge</em>, click <em>Copy</em>, and paste it into your forum post. That's it.</li>
+      </ol>
+
+      <div class="install-layout">
+        <div class="install-controls">
+          <p class="install-tip">
+            <span class="material-icons">lightbulb</span>
+            <span>Prefer a <code>.version</code> file URL over a direct download — it self-updates with each release.<br>
+            The optional <strong>Mod ID</strong> (from <code>mod_info.json</code>) lets TriOS skip a mod that's already installed.</span>
+          </p>
+
+          <label style="margin-top:16px">Your mod</label>
+          <div class="install-card">
+            <p id="install-mod-preview" class="install-preview"></p>
+            <div class="md-field">
+              <input type="url" id="install-mod" placeholder="https://.../mod_info.version" autocomplete="off">
+              <label for="install-mod">Link to your .version file (or .zip)</label>
+            </div>
+            <div class="md-field">
+              <input type="text" id="install-mod-id" placeholder="e.g. nexerelin" autocomplete="off">
+              <label for="install-mod-id">Mod ID (optional)</label>
+            </div>
+          </div>
+
+          <label style="margin-top:16px">Dependencies</label>
+          <div id="install-deps" class="install-deps"></div>
+          <button id="add-dep-btn" class="btn-add-dep"><span class="material-icons">add</span> Add dependency</button>
+
+          <hr class="install-divider">
+
+          <label>Load from an existing link <span class="label-hint">— paste a generated link or BBCode to edit it</span></label>
+          <div class="input-row">
+            <div class="md-field">
+              <input type="text" id="install-import" placeholder="open.html?… / starsector-mod://… / [url=…]" autocomplete="off">
+              <label for="install-import">Paste a link or BBCode</label>
+            </div>
+            <button id="install-import-btn" class="btn-primary"><span class="material-icons">input</span> Load</button>
+          </div>
+          <p id="install-import-msg" class="status-msg"></p>
+        </div>
+
+        <div class="install-output-area">
+          <!-- Badge color picker disabled for now (keeping TriOS branding).
+               Re-enable by uncommenting; install.js guards on #install-swatches.
+          <label>Badge color</label>
+          <div id="install-swatches" class="color-swatches">
+            <button class="swatch selected" data-file="install-badge.svg" style="background:#49fcff" title="Cyan"></button>
+            <button class="swatch" data-file="install-badge-blue.svg" style="background:#42a5f5" title="Blue"></button>
+            <button class="swatch" data-file="install-badge-purple.svg" style="background:#ab47bc" title="Purple"></button>
+            <button class="swatch" data-file="install-badge-green.svg" style="background:#66bb6a" title="Green"></button>
+            <button class="swatch" data-file="install-badge-amber.svg" style="background:#ffca28" title="Amber"></button>
+            <button class="swatch" data-file="install-badge-red.svg" style="background:#ef5350" title="Red"></button>
+          </div>
+          -->
+
+          <h3>Preview</h3>
+          <div id="install-badge-preview" class="install-badge-preview"></div>
+
+          <label style="margin-top:16px">Output format</label>
+          <div class="radio-group install-formats">
+            <label class="radio-label"><input type="radio" name="install-format" value="bbcode" checked> BBCode badge</label>
+            <label class="radio-label"><input type="radio" name="install-format" value="bbcode-text"> BBCode text</label>
+            <label class="radio-label"><input type="radio" name="install-format" value="raw"> Raw URL</label>
+            <label class="radio-label"><input type="radio" name="install-format" value="html"> HTML</label>
+          </div>
+
+          <div class="bbcode-header" style="margin-top:12px">
+            <h3>Output</h3>
+            <button id="copy-install" class="btn-copy" disabled><span class="material-icons">content_copy</span> Copy</button>
+          </div>
+          <textarea id="install-text" readonly rows="3" placeholder="Enter a mod URL above to generate an install link..."></textarea>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/hjson.min.js"></script>
+  <script src="deeplink.js"></script>
+  <script src="install.js"></script>
+</body>
+</html>

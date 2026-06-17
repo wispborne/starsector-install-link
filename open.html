@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install with TriOS — Starsector</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Relative paths so this works on GitHub Pages under any subpath -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="launcher-body">
+  <main class="launcher">
+    <div class="launcher-card">
+      <span class="material-icons launcher-icon" id="launcher-icon">rocket_launch</span>
+      <h1 id="launcher-title">Opening TriOS…</h1>
+      <p id="launcher-subtitle" class="launcher-subtitle"></p>
+
+      <a id="launch-btn" class="btn-launch" href="#" hidden>
+        <span class="material-icons">download</span> Install with TriOS
+      </a>
+
+      <div id="malformed" class="launcher-malformed" hidden>
+        <span class="material-icons">error_outline</span>
+        <p>This install link is malformed — it has no <code>mod</code> to install.</p>
+      </div>
+
+      <div id="fallback" class="launcher-fallback" hidden>
+        <p class="fallback-q">Nothing happened?</p>
+        <a id="download-link" class="fallback-link" hidden>
+          <span class="material-icons">archive</span> <span id="download-text">Download the mod directly</span>
+        </a>
+
+        <div id="dep-fallback" class="dep-fallback" hidden>
+          <p class="dep-fallback-label">This mod also needs these dependencies:</p>
+          <div id="dep-links" class="dep-links"></div>
+        </div>
+
+        <p class="fallback-hint">
+          You need <a href="https://github.com/wispborne/TriOS" target="_blank" rel="noopener">TriOS</a>
+          installed to handle <code>starsector-mod://</code> install links.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="vendor/hjson.min.js"></script>
+  <script src="deeplink.js"></script>
+  <script src="open.js"></script>
+</body>
+</html>
