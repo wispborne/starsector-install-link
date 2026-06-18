@@ -104,6 +104,64 @@
     };
   }
 
+  // Pick the best "remote link" to use as a mod source from a parsed .version
+  // object. Prefers masterVersionFile — the canonical remote .version URL, which
+  // auto-updates and lets TriOS skip already-installed mods — and falls back to
+  // directDownloadURL. Pure (takes an already-parsed object), so it is unit-
+  // testable without a parser or network. Returns null when neither field is set.
+  function extractRemoteLink(parsed) {
+    if (!parsed || typeof parsed !== 'object') return null;
+    var master = parsed.masterVersionFile != null && String(parsed.masterVersionFile).trim();
+    var direct = parsed.directDownloadURL != null && String(parsed.directDownloadURL).trim();
+    var url = master || direct || null;
+    if (!url) return null;
+    return {
+      url: url,
+      source: master ? 'masterVersionFile' : 'directDownloadURL',
+      modName: parsed.modName != null ? String(parsed.modName) : null
+    };
+  }
+
+  // Extract the mod id (and display name) from a parsed mod_info.json object.
+  // mod_info.json isn't strict JSON either — it carries comments, trailing commas
+  // and single-quoted values — so callers parse it with Hjson first. Pure, so it
+  // is unit-testable. Returns null when there's no usable id.
+  function extractModId(parsed) {
+    if (!parsed || typeof parsed !== 'object') return null;
+    var id = parsed.id != null && String(parsed.id).trim();
+    if (!id) return null;
+    return { id: id, name: parsed.name != null ? String(parsed.name) : null };
+  }
+
+  // Extract dependency entries from a parsed mod_info.json. A mod_info.json may
+  // carry a `dependencies` array of { id, name, version? }; we keep id (required)
+  // and name (optional) per entry. Returns [] when there's no dependencies array
+  // or none carry a usable id. Pure, so it is unit-testable.
+  function extractDependencies(parsed) {
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.dependencies)) return [];
+    return parsed.dependencies.map(function (d) {
+      if (!d || typeof d !== 'object') return null;
+      var id = d.id != null && String(d.id).trim();
+      if (!id) return null;
+      return { id: id, name: d.name != null ? String(d.name) : null };
+    }).filter(Boolean);
+  }
+
+  // Classify a parsed mod file (.version or mod_info.json) and pull out whatever
+  // is useful to fill into the form. The two formats are field-disjoint — a
+  // .version carries masterVersionFile/directDownloadURL but no top-level id, and
+  // a mod_info.json carries an id but neither link — so no filename hint is
+  // needed. Returns:
+  //   { kind: 'version', url, source, modName } | { kind: 'modinfo', id, modName }
+  // or null when the object is neither.
+  function readModFile(parsed) {
+    var link = extractRemoteLink(parsed);
+    if (link) return { kind: 'version', url: link.url, source: link.source, modName: link.modName };
+    var info = extractModId(parsed);
+    if (info) return { kind: 'modinfo', id: info.id, modName: info.name };
+    return null;
+  }
+
   // Browser-only: fetch + parse + normalize a .version URL. Requires the vendored
   // Hjson global. Always resolves to { data } or { error } and never rejects, so a
   // CORS/network failure degrades gracefully and never blocks the scheme launch.
@@ -133,6 +191,10 @@
     filenameFromURL: filenameFromURL,
     formatVersion: formatVersion,
     normalizeVersionData: normalizeVersionData,
+    extractRemoteLink: extractRemoteLink,
+    extractModId: extractModId,
+    extractDependencies: extractDependencies,
+    readModFile: readModFile,
     resolveVersion: resolveVersion
   };
 });

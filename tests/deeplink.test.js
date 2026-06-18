@@ -7,6 +7,10 @@ const {
   isVersionFile,
   filenameFromURL,
   normalizeVersionData,
+  extractRemoteLink,
+  extractModId,
+  extractDependencies,
+  readModFile,
   formatVersion
 } = require('../deeplink');
 
@@ -169,6 +173,121 @@ describe('normalizeVersionData', () => {
   it('flags non-object input', () => {
     assert.equal(normalizeVersionData(null).error, 'PARSE_FAILED');
     assert.equal(normalizeVersionData('nope').error, 'PARSE_FAILED');
+  });
+});
+
+describe('extractRemoteLink', () => {
+  it('prefers masterVersionFile (the example .version file)', () => {
+    const parsed = {
+      masterVersionFile: 'https://raw.githubusercontent.com/wispborne/stories/master/wisp_perseanchronicles.version',
+      modName: 'Persean Chronicles',
+      directDownloadURL: 'https://github.com/wispborne/stories/releases/download/3.0.8/Persean-Chronicles-3.0.8.zip',
+      modVersion: { major: 3, minor: 0, patch: 8 }
+    };
+    assert.deepEqual(extractRemoteLink(parsed), {
+      url: 'https://raw.githubusercontent.com/wispborne/stories/master/wisp_perseanchronicles.version',
+      source: 'masterVersionFile',
+      modName: 'Persean Chronicles'
+    });
+  });
+
+  it('falls back to directDownloadURL when masterVersionFile is absent', () => {
+    const result = extractRemoteLink({ modName: 'M', directDownloadURL: 'https://x/mod.zip' });
+    assert.equal(result.url, 'https://x/mod.zip');
+    assert.equal(result.source, 'directDownloadURL');
+  });
+
+  it('ignores a blank masterVersionFile and uses the direct URL', () => {
+    const result = extractRemoteLink({ masterVersionFile: '   ', directDownloadURL: 'https://x/mod.zip' });
+    assert.equal(result.url, 'https://x/mod.zip');
+    assert.equal(result.source, 'directDownloadURL');
+  });
+
+  it('returns null when neither link is present', () => {
+    assert.equal(extractRemoteLink({ modName: 'M', modVersion: {} }), null);
+    assert.equal(extractRemoteLink(null), null);
+    assert.equal(extractRemoteLink('nope'), null);
+  });
+
+  it('exposes a null modName when absent', () => {
+    assert.equal(extractRemoteLink({ masterVersionFile: 'https://x/M.version' }).modName, null);
+  });
+});
+
+describe('extractModId', () => {
+  it('pulls id and name from a mod_info.json object', () => {
+    assert.deepEqual(
+      extractModId({ id: 'MagicLib', name: 'MagicLib', version: { major: 1, minor: 5, patch: 8 } }),
+      { id: 'MagicLib', name: 'MagicLib' }
+    );
+  });
+  it('exposes a null name when absent', () => {
+    assert.deepEqual(extractModId({ id: 'JYD' }), { id: 'JYD', name: null });
+  });
+  it('returns null when there is no usable id', () => {
+    assert.equal(extractModId({ name: 'No Id' }), null);
+    assert.equal(extractModId({ id: '   ' }), null);
+    assert.equal(extractModId(null), null);
+    assert.equal(extractModId('nope'), null);
+  });
+});
+
+describe('extractDependencies', () => {
+  it('pulls id (and name) from each dependency in a mod_info.json', () => {
+    const parsed = {
+      id: 'wisp_perseanchronicles',
+      dependencies: [
+        { id: 'lw_lazylib', name: 'LazyLib' },
+        { id: 'MagicLib', name: 'MagicLib' }
+      ]
+    };
+    assert.deepEqual(extractDependencies(parsed), [
+      { id: 'lw_lazylib', name: 'LazyLib' },
+      { id: 'MagicLib', name: 'MagicLib' }
+    ]);
+  });
+
+  it('exposes a null name when a dependency omits one', () => {
+    assert.deepEqual(extractDependencies({ dependencies: [{ id: 'shaderLib' }] }), [
+      { id: 'shaderLib', name: null }
+    ]);
+  });
+
+  it('skips dependency entries with no usable id', () => {
+    const parsed = { dependencies: [{ name: 'No Id' }, { id: '  ' }, { id: 'ok', name: 'OK' }] };
+    assert.deepEqual(extractDependencies(parsed), [{ id: 'ok', name: 'OK' }]);
+  });
+
+  it('returns [] when there is no dependencies array', () => {
+    assert.deepEqual(extractDependencies({ id: 'solo' }), []);
+    assert.deepEqual(extractDependencies({ dependencies: 'nope' }), []);
+    assert.deepEqual(extractDependencies(null), []);
+  });
+});
+
+describe('readModFile', () => {
+  it('classifies a .version object and returns its remote link', () => {
+    const result = readModFile({
+      masterVersionFile: 'https://x/timid_xiv.version',
+      modName: 'Iron Shell',
+      modVersion: { major: 1, minor: 18, patch: '5b' }
+    });
+    assert.deepEqual(result, {
+      kind: 'version',
+      url: 'https://x/timid_xiv.version',
+      source: 'masterVersionFile',
+      modName: 'Iron Shell'
+    });
+  });
+
+  it('classifies a mod_info.json object and returns its mod id', () => {
+    const result = readModFile({ id: 'starlords', name: 'Star Lords', version: { major: 0, minor: 3, patch: 72 } });
+    assert.deepEqual(result, { kind: 'modinfo', id: 'starlords', modName: 'Star Lords' });
+  });
+
+  it('returns null for an object that is neither', () => {
+    assert.equal(readModFile({ description: 'nothing useful' }), null);
+    assert.equal(readModFile(null), null);
   });
 });
 

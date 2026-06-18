@@ -13,11 +13,16 @@ const installModIdInput = document.getElementById('install-mod-id');
 const installModPreview = document.getElementById('install-mod-preview');
 const installDepsEl = document.getElementById('install-deps');
 const addDepBtn = document.getElementById('add-dep-btn');
+const depAddDropzone = document.getElementById('dep-add-dropzone');
+const depAddFileInput = document.getElementById('dep-add-file-input');
 const installSwatches = document.getElementById('install-swatches');
 const installStyles = document.getElementById('install-styles');
 const installBadgePreview = document.getElementById('install-badge-preview');
 const installText = document.getElementById('install-text');
 const copyInstallBtn = document.getElementById('copy-install');
+const versionDropzone = document.getElementById('version-dropzone');
+const versionFileInput = document.getElementById('version-file-input');
+const versionDropMsg = document.getElementById('version-drop-msg');
 
 let installBadgeFile = 'badges/install-badge.svg';
 let installDebounce = null;
@@ -53,6 +58,26 @@ function buildOpenUrl(modEntry, deps) {
   return staticBase() + 'open.html?' + Deeplink.buildParams(modEntry, deps).toString();
 }
 
+// A dependency row is incomplete when it names a mod (id) but has no URL — the
+// builder would silently drop it, so flag the row and report the form invalid.
+// A fully blank row, or a URL with no id, is fine. Returns true when every row
+// is complete.
+function validateDeps() {
+  let valid = true;
+  installDepsEl.querySelectorAll('.install-dep-row').forEach(row => {
+    const url = row.querySelector('.dep-url').value.trim();
+    const id = row.querySelector('.dep-id').value.trim();
+    const err = row.querySelector('.dep-error');
+    if (id && !url) {
+      valid = false;
+      setStatus(err, 'Add this dependency’s .version or .zip link, or clear the mod ID.', 'error');
+    } else {
+      setStatus(err, '');
+    }
+  });
+  return valid;
+}
+
 function formatOutput(openUrl, badgeImg) {
   const fmt = document.querySelector('input[name="install-format"]:checked')?.value || 'bbcode';
   switch (fmt) {
@@ -75,7 +100,10 @@ function updateInstallOutput() {
   img.alt = 'install badge preview';
   installBadgePreview.appendChild(img);
 
-  if (!modUrl) {
+  // A mod URL is required, and every dependency must be complete; otherwise
+  // block output so we never emit a link that silently drops a dependency.
+  const depsValid = validateDeps();
+  if (!modUrl || !depsValid) {
     installText.value = '';
     copyInstallBtn.disabled = true;
     return;
@@ -114,8 +142,17 @@ function previewVersion(url, targetEl) {
       targetEl.textContent = '✓ ' + result.data.modName + (v ? ' v' + v : '');
       targetEl.className = 'install-preview ok';
     } else {
-      targetEl.textContent = "Couldn't preview (host may block cross-origin reads) — the link still works.";
-      targetEl.className = 'install-preview warn';
+      // Couldn't fetch the .version (cross-origin block) — the link still works,
+      // so present it as a success; we just can't show the resolved mod name.
+      targetEl.className = 'install-preview ok';
+      targetEl.textContent = '';
+      const title = document.createElement('span');
+      title.className = 'preview-title';
+      title.textContent = '✓ ' + (targetEl === installModPreview ? 'Mod added' : 'Dependency added');
+      const sub = document.createElement('span');
+      sub.className = 'preview-sub';
+      sub.textContent = '(unable to show name due to XSS)';
+      targetEl.append(title, sub);
     }
   });
 }
@@ -181,13 +218,42 @@ function addDepRow(url, id, focusInput) {
   const preview = document.createElement('p');
   preview.className = 'install-preview';
 
+  const depError = document.createElement('p');
+  depError.className = 'status-msg dep-error';
+
   const top = document.createElement('div');
   top.className = 'install-dep-top';
-  top.append(mdField(input, 'Link to .version file (or .zip)'), removeBtn);
+  top.append(mdField(input, 'Link to .version file or .zip'), removeBtn);
+
+  // Compact drop zone: a .version fills this dep's URL, a mod_info.json its ID.
+  const dropInput = document.createElement('input');
+  dropInput.type = 'file';
+  dropInput.accept = '.version,.json,application/json,text/plain';
+  dropInput.hidden = true;
+
+  const dropZone = document.createElement('div');
+  dropZone.className = 'version-dropzone compact';
+  dropZone.tabIndex = 0;
+  dropZone.setAttribute('role', 'button');
+  dropZone.setAttribute('aria-label', 'Drop a .version or mod_info.json file here for this dependency');
+  dropZone.innerHTML = '<span class="material-icons">upload_file</span>'
+    + '<span class="version-dropzone-text"><span class="version-dropzone-sub">'
+    + 'Drop a <code>.version</code> or <code>mod_info.json</code> file</span></span>';
+  dropZone.appendChild(dropInput);
+
+  const dropMsg = document.createElement('p');
+  dropMsg.className = 'status-msg drop-status';
+
+  const depTargets = () => ({ urlInput: input, idInput: idInput, msg: dropMsg });
+  wireBrowse(dropZone, dropInput, depTargets);
+  // The whole dependency card is the drop target; the inner zone is just browse.
+  wireDropTarget(row, depTargets);
+
   // Resolved mod name sits at the top, labeling this dependency's field group.
-  row.append(preview, top, mdField(idInput, 'Mod ID (optional)'));
+  row.append(preview, top, depError, mdField(idInput, 'Mod ID (optional)'), dropZone, dropMsg);
   installDepsEl.appendChild(row);
   if (focusInput !== false) input.focus();
+  return row;
 }
 
 // Reverse builder: pull mod/dep params out of a pasted link or BBCode and
@@ -231,6 +297,149 @@ installModInput.addEventListener('input', scheduleInstallUpdate);
 installModIdInput.addEventListener('input', updateInstallOutput);
 addDepBtn.addEventListener('click', () => addDepRow(''));
 
+// --- mod file drop / browse --------------------------------------------------
+// A dropped (or browsed) mod file is parsed with Hjson — neither .version nor
+// mod_info.json is strict JSON (they carry comments, trailing commas, single
+// quotes) — then routed by type: a .version fills the URL field with its remote
+// link (masterVersionFile preferred over directDownloadURL); a mod_info.json
+// fills the Mod ID field with its id. The main mod and every dependency row each
+// get a drop zone wired the same way.
+
+// Set a status line. `el` is a .status-msg element. Only the error/success state
+// is toggled — marker classes like drop-status / dep-error (which drive the
+// collapse-when-empty rule and row lookups) are preserved.
+function setStatus(el, text, cls) {
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.remove('error', 'success');
+  if (cls) el.classList.add(cls);
+}
+
+// Parse one dropped/browsed file and fill the given { urlInput, idInput } targets.
+function processModFile(file, targets) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed = null;
+    try { parsed = Hjson.parse(String(reader.result)); } catch (e) { parsed = null; }
+    const result = parsed && Deeplink.readModFile(parsed);
+    if (!result) {
+      setStatus(targets.msg, `Couldn't read a link or mod ID from ${file.name}.`, 'error');
+      return;
+    }
+    if (result.kind === 'version' && targets.urlInput) {
+      targets.urlInput.value = result.url;
+      setStatus(targets.msg, ''); // clear any prior error; success is silent
+    } else if (result.kind === 'modinfo' && targets.idInput) {
+      targets.idInput.value = result.id;
+      setStatus(targets.msg, ''); // clear any prior error; success is silent
+      // If this mod_info declares dependencies and the user hasn't started a
+      // dependency list yet, seed a row per dependency with its mod id prefilled.
+      const deps = Deeplink.extractDependencies(parsed);
+      if (deps.length && installDepsEl.querySelectorAll('.install-dep-row').length === 0) {
+        deps.forEach(dep => addDepRow('', dep.id, false));
+      }
+    } else {
+      setStatus(targets.msg, `That file didn't have what this field needs.`, 'error');
+      return;
+    }
+    scheduleInstallUpdate();
+  };
+  reader.onerror = () => setStatus(targets.msg, `Couldn't read ${file.name}.`, 'error');
+  reader.readAsText(file);
+}
+
+// Make an element a file drop target: highlight while a file is dragged over it
+// and route the dropped file through processModFile. A dragenter/dragleave depth
+// counter keeps the highlight steady as the pointer crosses child elements — a
+// large target like a whole section would otherwise flicker. stopPropagation lets
+// targets nest: a drop (and its drag highlight) on a dependency card inside the
+// Dependencies section is handled by the card alone and never reaches the
+// section. Because each target stops its own drag events, every ancestor's
+// counter stays balanced and only the innermost target under the pointer lights.
+function wireDropTarget(el, getTargets) {
+  if (!el) return;
+  let depth = 0;
+  el.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    depth++;
+    el.classList.add('dragover');
+  });
+  el.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  el.addEventListener('dragleave', (e) => {
+    e.stopPropagation();
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) el.classList.remove('dragover');
+  });
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    depth = 0;
+    el.classList.remove('dragover');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) processModFile(file, getTargets());
+  });
+}
+
+// Wire a zone's browse affordance: click or keyboard opens its file input, and
+// picking a file feeds processModFile. Dropping is handled separately by the
+// surrounding drop target (wireDropTarget). `getTargets` is called lazily so dep
+// rows resolve their current inputs at use time.
+function wireBrowse(zoneEl, fileInputEl, getTargets) {
+  if (!zoneEl) return;
+  const open = () => fileInputEl && fileInputEl.click();
+  zoneEl.addEventListener('click', open);
+  zoneEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+  });
+  if (fileInputEl) {
+    fileInputEl.addEventListener('change', () => {
+      if (fileInputEl.files && fileInputEl.files[0]) processModFile(fileInputEl.files[0], getTargets());
+      fileInputEl.value = ''; // allow re-picking the same file
+    });
+  }
+}
+
+if (versionDropzone) {
+  const modTargets = () => ({
+    urlInput: installModInput,
+    idInput: installModIdInput,
+    msg: versionDropMsg
+  });
+  wireBrowse(versionDropzone, versionFileInput, modTargets);
+  // The entire "Your mod" section is the drop target; the zone is just browse.
+  wireDropTarget(installModInput.closest('.install-controls'), modTargets);
+
+  // Swallow stray drops elsewhere on the page so the browser doesn't navigate
+  // away to the dropped file.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
+}
+
+// Dropping anywhere on the Dependencies section background (or its dedicated
+// zone) spawns a fresh dependency row and fills it; dropping onto an existing
+// dependency card updates just that card, since the card's own handler stops the
+// event before it reaches the section. getTargets runs once per drop, so each
+// drop here creates exactly one new row.
+const newDepTargets = () => {
+  const row = addDepRow('', '', false);
+  return {
+    urlInput: row.querySelector('.dep-url'),
+    idInput: row.querySelector('.dep-id'),
+    msg: row.querySelector('.drop-status')
+  };
+};
+if (depAddDropzone) {
+  wireBrowse(depAddDropzone, depAddFileInput, newDepTargets);
+  wireDropTarget(depAddDropzone, newDepTargets);
+}
+if (installDepsEl) wireDropTarget(installDepsEl.closest('.install-controls'), newDepTargets);
+
 // Badge color picker is currently disabled (see install.html); guard so the
 // rest of the generator still works. installBadgeFile stays at its default.
 if (installSwatches) {
@@ -262,5 +471,20 @@ document.querySelectorAll('input[name="install-format"]').forEach(radio => {
 });
 
 copyInstallBtn.addEventListener('click', () => copyToClipboard(installText.value, copyInstallBtn));
+
+// Footer licenses dialog (native <dialog>): open button shows it modally, the
+// close button and a click on the backdrop dismiss it (Esc works natively).
+const licenseDialog = document.getElementById('license-dialog');
+const openLicensesBtn = document.getElementById('open-licenses');
+const closeLicensesBtn = document.getElementById('close-licenses');
+if (licenseDialog && openLicensesBtn) {
+  openLicensesBtn.addEventListener('click', () => licenseDialog.showModal());
+  closeLicensesBtn?.addEventListener('click', () => licenseDialog.close());
+  // The dialog element fills only the backdrop area around the padding-less box,
+  // so a click whose target is the dialog itself is a backdrop click.
+  licenseDialog.addEventListener('click', (e) => {
+    if (e.target === licenseDialog) licenseDialog.close();
+  });
+}
 
 updateInstallOutput();

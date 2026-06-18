@@ -27,7 +27,7 @@ body {
 
 header {
   text-align: center;
-  padding: 48px 24px 24px;
+  padding: 48px 24px 0px;
 }
 
 header h1 {
@@ -57,7 +57,7 @@ main {
 }
 
 section {
-  margin-top: 32px;
+  margin-top: 16px;
 }
 
 h2 {
@@ -124,6 +124,28 @@ input[type="url"]:focus {
 
 .btn-primary .material-icons { font-size: 18px; }
 
+/* Muted button for secondary workflows (e.g. Load) — same footprint as
+   btn-primary but without the bright accent fill. */
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--surface-high);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-secondary .material-icons { font-size: 18px; }
+
 .status-msg {
   font-size: 13px;
   margin-top: 8px;
@@ -132,6 +154,14 @@ input[type="url"]:focus {
 
 .status-msg.error { color: var(--error); }
 .status-msg.success { color: var(--accent); }
+
+/* These status lines only appear on error, so collapse them when empty. */
+.drop-status:empty,
+.dep-error:empty {
+  display: none;
+  min-height: 0;
+  margin-top: 0;
+}
 
 .btn-toggle-data {
   display: flex;
@@ -290,6 +320,14 @@ input[type="url"]:focus {
 .btn-copy.copied {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Full-width copy button above the output box (avoids a lone right-aligned one). */
+.btn-copy-block {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 12px;
+  margin-bottom: 10px;
 }
 
 .stack-layout {
@@ -459,7 +497,7 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin: 16px 0 28px;
+  margin: 12px 0 16px;
   padding: 0;
 }
 
@@ -497,6 +535,90 @@ textarea:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  align-items: start;
+}
+
+/* The left grid cell stacks two independent step cards (Your mod, Dependencies). */
+.install-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.step-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+/* Section heading row that can carry a trailing info-icon tooltip. */
+.step-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Info icon whose tip bubble appears on hover/focus, replacing inline tips. */
+.info-tip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--on-surface-dim);
+  cursor: help;
+  outline: none;
+}
+
+.info-tip:hover,
+.info-tip:focus-visible { color: var(--accent); }
+
+.info-tip > .material-icons { font-size: 20px; }
+
+.info-tip-bubble {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-high);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--on-surface);
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.info-tip:hover .info-tip-bubble,
+.info-tip:focus .info-tip-bubble,
+.info-tip:focus-within .info-tip-bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Each tip line shows a lightbulb glyph beside a single text block. */
+.info-tip-bubble .tip-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.info-tip-bubble .tip-line .material-icons {
+  font-size: 16px;
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .install-controls,
@@ -504,6 +626,16 @@ textarea:focus {
   background: var(--surface-variant);
   padding: 16px 20px;
   border-radius: var(--radius);
+}
+
+/* The "Your mod" section is itself a file drop target; ring it while dragging. */
+.install-controls {
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.install-controls.dragover {
+  background: var(--surface-high);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .install-output-area h3 { margin-bottom: 12px; }
@@ -537,22 +669,14 @@ textarea:focus {
 .install-preview.neutral { color: var(--on-surface-dim); }
 .install-preview.warn { color: #ffca28; }
 
-.install-tip {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: var(--accent-dim);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--on-surface);
-}
+/* Title + subtitle layout used when a mod/dep is added but its name can't be
+   resolved. The title keeps the .ok accent; the subtitle is dimmed and smaller. */
+.install-preview .preview-title { display: block; }
 
-.install-tip .material-icons {
-  font-size: 18px;
-  color: var(--accent);
-  flex-shrink: 0;
+.install-preview .preview-sub {
+  display: block;
+  color: var(--on-surface-dim);
+  font-size: 11px;
 }
 
 .install-deps {
@@ -560,6 +684,59 @@ textarea:focus {
   flex-direction: column;
   gap: 10px;
 }
+
+/* Affordance for adding a .version / mod_info.json file. The mod and per-dep
+   zones are browse-only (their surrounding section/card handles drops); the
+   Dependencies "add" zone also accepts drops directly (see .dragover below). */
+.version-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1.5px dashed var(--surface-high);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.version-dropzone:hover,
+.version-dropzone:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Only drop-target zones (the Dependencies "add" zone) get this while dragging. */
+.version-dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.version-dropzone .material-icons {
+  font-size: 28px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.version-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.version-dropzone-text strong { color: var(--on-surface); font-weight: 500; }
+.version-dropzone-sub { font-size: 12px; color: var(--on-surface-dim); }
+
+/* Slim variant used inside each dependency card. */
+.version-dropzone.compact {
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.version-dropzone.compact .material-icons { font-size: 20px; }
+.version-dropzone.compact .version-dropzone-sub { font-size: 11px; }
 
 /* Material-style filled text field with a floating label. The label names what
    goes in the box; the example placeholder appears only on focus. */
@@ -608,7 +785,7 @@ textarea:focus {
 
 .input-row .md-field { flex: 1; min-width: 0; }
 
-/* Shared card for the main mod and each dependency. */
+/* Shared card for the main mod and each dependency. Also a file drop target. */
 .install-card {
   display: flex;
   flex-direction: column;
@@ -617,6 +794,12 @@ textarea:focus {
   border: 1px solid var(--surface-high);
   border-radius: var(--radius-sm);
   padding: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.install-card.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
 }
 
 /* Card spacing is handled by the flex gap, so drop children's own top margins. */
@@ -654,16 +837,17 @@ textarea:focus {
 .btn-add-dep {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px dashed var(--surface-high);
+  gap: 6px;
+  margin-top: 12px;
+  padding: 9px 16px;
+  background: var(--surface-high);
+  border: 1px solid var(--surface-high);
   border-radius: var(--radius-sm);
-  color: var(--on-surface-dim);
-  font-size: 13px;
+  color: var(--on-surface);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 
 .btn-add-dep:hover { border-color: var(--accent); color: var(--accent); }
@@ -690,17 +874,33 @@ textarea:focus {
 .style-option {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
   background: var(--surface-variant);
   border: 2px solid var(--surface-high);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.15s;
+  transition: transform 0.15s, border-color 0.2s;
 }
 
 .style-option:hover { transform: translateY(-1px); }
 
-.style-option.selected { border-color: var(--accent); }
+/* A radio dot to the left marks the active option; both badges stay fully
+   visible and the card border stays neutral. */
+.style-option::before {
+  content: '';
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--on-surface-dim);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.style-option.selected::before {
+  border-color: var(--accent);
+  background: radial-gradient(var(--accent) 0 4px, transparent 5px);
+}
 
 .style-option img { display: block; max-width: 100%; height: auto; }
 
@@ -838,6 +1038,220 @@ textarea:focus {
   background: var(--surface);
   padding: 1px 5px;
   border-radius: 4px;
+}
+
+/* ---- FAQ ---- */
+
+.faq-section {
+  margin-top: 40px;
+}
+
+.faq-heading {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.faq-item {
+  background: var(--surface-variant);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface);
+  transition: color 0.2s;
+}
+
+.faq-item summary::-webkit-details-marker { display: none; }
+
+.faq-item summary:hover { color: var(--accent); }
+
+.faq-item summary::after {
+  content: '\e5cf'; /* Material Icons expand_more */
+  font-family: 'Material Icons';
+  font-size: 20px;
+  color: var(--on-surface-dim);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.faq-item[open] summary::after { transform: rotate(180deg); }
+
+.faq-answer {
+  padding: 0 16px 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-surface-dim);
+}
+
+.faq-answer a { color: var(--accent); }
+
+.faq-answer em { font-style: normal; font-weight: 500; color: var(--on-surface); }
+
+.faq-answer code {
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.9em;
+  background: var(--surface);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ---- Site footer ---- */
+
+.site-footer {
+  border-top: 1px solid var(--surface-high);
+  margin-top: 8px;
+  padding: 28px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.footer-label {
+  font-size: 13px;
+  color: var(--on-surface-dim);
+}
+
+.site-footer a,
+.footer-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--on-surface-dim);
+  font-size: 13px;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.site-footer a:hover,
+.footer-link-btn:hover { color: var(--accent); }
+
+.site-footer .material-icons { font-size: 16px; }
+
+.footer-tools a { font-weight: 500; color: var(--on-surface); }
+.footer-tools a:hover { color: var(--accent); }
+
+.footer-meta { color: var(--on-surface-dim); }
+
+/* ---- Licenses dialog ---- */
+
+.license-dialog {
+  /* Restore the centering the global `* { margin: 0 }` reset strips from <dialog>. */
+  margin: auto;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  background: var(--surface-variant);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.license-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.license-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--surface-high);
+}
+
+.license-dialog-head h2 {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.license-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--on-surface-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s;
+}
+
+.license-close:hover { color: var(--accent); }
+
+.license-body {
+  padding: 16px 20px 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 64px - 57px);
+}
+
+.license-body section + section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--surface-high);
+}
+
+.license-body h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.license-tag {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--on-surface-dim);
+}
+
+.license-note {
+  font-size: 13px;
+  color: var(--on-surface-dim);
+  margin-top: 4px;
+}
+
+.license-note a { color: var(--accent); }
+
+.license-body pre {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-sm);
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--on-surface-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 @media (max-width: 600px) {

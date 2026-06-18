@@ -19,59 +19,90 @@
     <h1><span class="material-icons">download</span> TriLink</h1>
     <p class="subtitle">Generate a one-click link that installs your mod through TriOS</p>
   </header>
-
   <main>
     <section class="install-section">
-      <ol class="how-to">
-        <li><strong>Add your .version url</strong>. Paste the link to your mod's <code>.version</code> file with a
-          working <code>directDownloadURL</code>. Don't have one? Paste a link to your mod's <code>.zip</code> download
-          instead.</li>
-        <li><strong>Mod ID</strong> <span class="opt">(optional)</span>. From your <code>mod_info.json</code>. Lets
-          TriOS skip the mod download if it's already installed.</li>
-        <li><strong>Dependencies</strong> <span class="opt">(optional)</span>. Click <em>Add dependency</em> and paste
-          each required mod's <code>.version</code> or <code>.zip</code> link, and ideally the mod id.</li>
-        <li><strong>Copy &amp; paste</strong>. Click <em>Copy</em>, and paste it into your forum post.</li>
-        <li><strong>Test it!</strong> Requires TriOS 1.6.0 or later.</li>
-      </ol>
-
       <div class="install-layout">
-        <div class="install-controls">
-          <p class="install-tip">
-            <span class="material-icons">lightbulb</span>
-            <span>A <code>.version</code> file URL is better than a mod download link; it updates whenever you update
-              your version file and helps avoid unnecessary redownloads.</span>
-          </p>
-
-          <p class="install-tip">
-            <span class="material-icons">lightbulb</span>
-            <span>The optional <strong>Mod ID</strong> (from <code>mod_info.json</code>) combined with a .version file
-              lets TriOS skip a mod that's
-              already installed.</span>
-          </p>
-
-          <label style="margin-top:16px"><strong>Your mod</strong></label>
-          <div class="install-card">
-            <p id="install-mod-preview" class="install-preview"></p>
-            <div class="md-field">
-              <input type="url" id="install-mod" placeholder="https://.../mod_info.version" autocomplete="off">
-              <label for="install-mod">Link to your .version file (or .zip)</label>
+        <div class="install-column">
+          <div class="install-controls">
+            <div class="step-head">
+              <h2 class="step-title">Your mod</h2>
+              <span class="info-tip" tabindex="0" role="button" aria-label="Tips about the .version URL and Mod ID">
+                <span class="material-icons">info</span>
+                <span class="info-tip-bubble">
+                  <span class="tip-line">
+                    <span class="material-icons">lightbulb</span>
+                    <span>A <code>.version</code> file URL is better than a mod download link; it updates whenever you
+                      update your version file and helps avoid unnecessary redownloads.</span>
+                  </span>
+                  <span class="tip-line">
+                    <span class="material-icons">lightbulb</span>
+                    <span>The optional <strong>Mod ID</strong> (from <code>mod_info.json</code>) combined with a
+                      .version
+                      file lets TriOS skip a mod that's already installed.</span>
+                  </span>
+                </span>
+              </span>
             </div>
-            <div class="md-field">
-              <input type="text" id="install-mod-id" placeholder="e.g. nexerelin" autocomplete="off">
-              <label for="install-mod-id">Mod ID (optional)</label>
+            <ol class="how-to" style="counter-reset: step 0">
+              <li><strong>Add your .version url</strong>. Paste the link to your mod's <code>.version</code> file with a
+                working <code>directDownloadURL</code> (recommended) or to your mod's <code>.zip</code>
+                download.</li>
+              <li><strong>Mod ID</strong> <span class="opt">(optional)</span>. Lets
+                TriOS skip the mod download if it's already installed.</li>
+            </ol>
+
+            <div class="install-card">
+              <p id="install-mod-preview" class="install-preview"></p>
+              <div class="md-field">
+                <input type="url" id="install-mod" placeholder="https://.../mod_info.version" autocomplete="off">
+                <label for="install-mod">Link to .version file or .zip</label>
+              </div>
+              <div class="md-field">
+                <input type="text" id="install-mod-id" placeholder="e.g. nexerelin" autocomplete="off">
+                <label for="install-mod-id">Mod ID (optional)</label>
+              </div>
             </div>
+            <br />
+
+            <div id="version-dropzone" class="version-dropzone" tabindex="0" role="button"
+              aria-label="Drop a .version or mod_info.json file here, or click to browse, to fill in the mod link and ID">
+              <input type="file" id="version-file-input" accept=".version,.json,application/json,text/plain" hidden>
+              <span class="material-icons">upload_file</span>
+              <span class="version-dropzone-text">
+                <strong>Drop a <code>.version</code> or <code>mod_info.json</code> file here</strong>
+              </span>
+            </div>
+            <span id="version-drop-msg" class="status-msg drop-status"></span>
           </div>
 
-          <label style="margin-top:16px"><strong>Your mod's dependencies</strong></label>
-          <div id="install-deps" class="install-deps"></div>
-          <button id="add-dep-btn" class="btn-add-dep"><span class="material-icons">add</span> Add dependency</button>
+          <div class="install-controls">
+            <h2 class="step-title">Dependencies</h2>
+            <ol class="how-to" style="counter-reset: step 2">
+              <li><strong>Add dependencies</strong> <span class="opt">(optional)</span>. Click <em>Add dependency</em>
+                and paste each required mod's <code>.version</code> or <code>.zip</code> link, and ideally the mod id.
+              </li>
+            </ol>
 
+            <div id="install-deps" class="install-deps"></div>
+            <button id="add-dep-btn" class="btn-add-dep"><span class="material-icons">add</span> Add dependency</button>
+
+            <div id="dep-add-dropzone" class="version-dropzone" style="margin-top:10px" tabindex="0" role="button"
+              aria-label="Drop a .version or mod_info.json file here to add a new dependency">
+              <input type="file" id="dep-add-file-input" accept=".version,.json,application/json,text/plain" hidden>
+              <span class="material-icons">upload_file</span>
+              <span class="version-dropzone-text">
+                <strong>Drop a <code>.version</code> or <code>mod_info.json</code> to add a dependency</strong>
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="install-output-area">
+          <h2 class="step-title">Output</h2>
+
           <!-- Badge color picker disabled for now (keeping TriOS branding).
                Re-enable by uncommenting; install.js guards on #install-swatches.
-          <label>Badge color</label>
+          <label style="margin-top:16px">Badge color</label>
           <div id="install-swatches" class="color-swatches">
             <button class="swatch selected" data-file="badges/install-badge.svg" style="background:#49fcff" title="Cyan"></button>
             <button class="swatch" data-file="badges/install-badge-blue.svg" style="background:#42a5f5" title="Blue"></button>
@@ -82,18 +113,16 @@
           </div>
           -->
 
-          <label>Badge style</label>
+          <label style="margin-top:16px">Badge style</label>
           <div id="install-styles" class="style-options">
             <button type="button" class="style-option selected" data-file="badges/install-badge.svg" title="Flat">
               <img src="badges/install-badge.svg" alt="Flat badge style">
             </button>
-            <button type="button" class="style-option" data-file="badges/install-badge-forthebadge.svg" title="For the badge">
+            <button type="button" class="style-option" data-file="badges/install-badge-forthebadge.svg"
+              title="For the badge">
               <img src="badges/install-badge-forthebadge.svg" alt="For-the-badge style">
             </button>
           </div>
-
-          <h3>Preview</h3>
-          <div id="install-badge-preview" class="install-badge-preview"></div>
 
           <label style="margin-top:16px">Output format</label>
           <div class="radio-group install-formats">
@@ -105,13 +134,24 @@
             <label class="radio-label"><input type="radio" name="install-format" value="html"> HTML</label>
           </div>
 
-          <div class="bbcode-header" style="margin-top:12px">
-            <h3>Output</h3>
-            <button id="copy-install" class="btn-copy" disabled><span class="material-icons">content_copy</span>
-              Copy</button>
-          </div>
+          <h3 style="margin-top:16px">Preview</h3>
+          <div id="install-badge-preview" class="install-badge-preview"></div>
+
+          <hr class="install-divider">
+
+          <ol class="how-to" style="counter-reset: step 3">
+            <li><strong>Copy &amp; paste</strong>. Click <em>Copy</em>, and paste it into your forum post.</li>
+          </ol>
+
+          <button id="copy-install" class="btn-copy btn-copy-block" disabled><span
+              class="material-icons">content_copy</span>
+            Copy</button>
           <textarea id="install-text" readonly rows="3"
             placeholder="Enter a mod URL above to generate an install link..."></textarea>
+
+          <ol class="how-to" style="counter-reset: step 4; margin-top: 20px">
+            <li><strong>Test it!</strong> Requires TriOS 1.6.0 or later.</li>
+          </ol>
         </div>
       </div>
 
@@ -126,12 +166,146 @@
               autocomplete="off">
             <label for="install-import">Paste a link or BBCode</label>
           </div>
-          <button id="install-import-btn" class="btn-primary"><span class="material-icons">input</span> Load</button>
+          <button id="install-import-btn" class="btn-secondary"><span class="material-icons">input</span> Load</button>
         </div>
         <p id="install-import-msg" class="status-msg"></p>
       </div>
     </section>
+
+    <section class="faq-section">
+      <h2 class="faq-heading">FAQ</h2>
+
+      <details class="faq-item">
+        <summary>What does this tool do?</summary>
+        <div class="faq-answer">
+          <p>It generates a one-click <strong>Install with TriOS</strong> link (and a forum badge) for your Starsector
+            mod. You then paste the button into your forum page (or paste the link onto Patreon or wherever).
+          </p>
+          <p><br />When someone clicks it, TriOS launches, downloads, and installs your mod, along with any dependencies
+            you list,
+            automatically.</p>
+          <br />
+          <p>If they don't have TriOS, they will be prompted to install it,
+            and you can ask them why they clicked "Install with TriOS" without having it.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What do players need for the link to work?</summary>
+        <div class="faq-answer">
+          <p>TriOS 1.6.0 or later. Clicking the link opens a small launcher page that hands off to TriOS. If TriOS
+            isn't installed, that page falls back to ordinary manual download links.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Why would I use this?</summary>
+        <div class="faq-answer">
+          <p>It lets people install your mod without thinking about how to install it (or the dependencies). Also, it's kinda neat.</p>
+          <br />
+          <p>It's like living in the future, if the future was ~2013.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Should I use a .version URL or a .zip link?</summary>
+        <div class="faq-answer">
+          <p>A <code>.version</code> file URL if you can. It includes the mod version, which lets TriOS skip a
+            mod that's already installed if you include the mod id as well. It also means you only have to update
+            your .version file if your download links change, not this button.</p>
+          <br />
+          <p>A <code>.zip</code> link works too, but it's a fixed direct download.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What is the Mod ID for?</summary>
+        <div class="faq-answer">
+          <p>It's optional but recommended. Combined with a <code>.version</code> URL, it lets TriOS recognize a mod
+            that's already
+            installed and skip re-downloading it so players don't redownload LazyLib 100 times.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Why doesn't the preview show my mod's name?</summary>
+        <div class="faq-answer">
+          <p>The preview tries to read your <code>.version</code> file directly in your browser, but many hosts block
+            cross-origin reads for security. Assuming your link is right, it'll work fine, but it's always good to test!
+          </p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is anything uploaded to a server?</summary>
+        <div class="faq-answer">
+          <p>No. Everything runs in your browser; the link is built entirely client-side and nothing is sent
+            anywhere. This is a static website with no server-side logic at all.</p>
+        </div>
+      </details>
+    </section>
   </main>
+
+  <footer class="site-footer">
+    <nav class="footer-row footer-tools">
+      <span class="footer-label">More by Wisp</span>
+      <a href="https://fractalsoftworks.com/forum/index.php?topic=29674" target="_blank" rel="noopener">TriOS</a>
+      <a href="https://starmodder.pages.dev/" target="_blank" rel="noopener">StarModder</a>
+      <a href="https://chipper.pages.dev/" target="_blank" rel="noopener">Chipper</a>
+    </nav>
+    <nav class="footer-row footer-meta">
+      <a href="https://github.com/wispborne/starsector-install-link" target="_blank" rel="noopener">
+        <span class="material-icons">code</span> Source code
+      </a>
+      <button type="button" id="open-licenses" class="footer-link-btn">
+        <span class="material-icons">description</span> Licenses
+      </button>
+    </nav>
+  </footer>
+
+  <dialog id="license-dialog" class="license-dialog">
+    <div class="license-dialog-head">
+      <h2>Third-party licenses</h2>
+      <button type="button" id="close-licenses" class="license-close" aria-label="Close licenses">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+    <div class="license-body">
+      <section>
+        <h3>Hjson <span class="license-tag">v3.2.1 &middot; MIT</span></h3>
+        <p class="license-note">Parses <code>.version</code> and <code>mod_info.json</code> files, which aren't strict
+          JSON. <a href="https://github.com/hjson/hjson-js" target="_blank" rel="noopener">hjson/hjson-js</a></p>
+        <pre>MIT License
+
+Copyright (c) 2014-2017 Christian Zangl
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+      </section>
+      <section>
+        <h3>Roboto &amp; Material Icons <span class="license-tag">Apache 2.0</span></h3>
+        <p class="license-note">Fonts served by Google Fonts. Licensed under the
+          <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache License,
+            Version 2.0</a>.
+        </p>
+      </section>
+    </div>
+  </dialog>
 
   <script src="vendor/hjson.min.js"></script>
   <script src="deeplink.js"></script>
