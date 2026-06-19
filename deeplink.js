@@ -178,11 +178,24 @@
     return null;
   }
 
+  // A GitHub "blob" URL (github.com/{owner}/{repo}/blob/{ref}/{path}) serves the
+  // rendered HTML page, not the file — fetching it yields markup that no parser
+  // can read. Rewrite it to the raw.githubusercontent.com host so fetch() gets the
+  // actual file contents. Also handles the github.com/.../raw/... form. Leaves
+  // non-GitHub or already-raw URLs untouched. Pure, so it is unit-testable.
+  function toRawGithubURL(url) {
+    if (!url || typeof url !== 'string') return url;
+    var m = url.match(/^(https?:)\/\/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/i);
+    if (!m) return url;
+    var rest = m[4].split('#')[0].replace(/\?raw=true$/i, '').replace(/\?.*$/, '');
+    return m[1] + '//raw.githubusercontent.com/' + m[2] + '/' + m[3] + '/' + rest;
+  }
+
   // Browser-only: fetch + parse + normalize a .version URL. Requires the vendored
   // Hjson global. Always resolves to { data } or { error } and never rejects, so a
   // CORS/network failure degrades gracefully and never blocks the scheme launch.
   function resolveVersion(url) {
-    return fetch(url).then(function (res) {
+    return fetch(toRawGithubURL(url)).then(function (res) {
       if (!res.ok) return { error: 'FETCH_FAILED', message: 'HTTP ' + res.status };
       return res.text().then(function (body) {
         var parsed;
@@ -212,6 +225,7 @@
     extractModId: extractModId,
     extractDependencies: extractDependencies,
     readModFile: readModFile,
+    toRawGithubURL: toRawGithubURL,
     resolveVersion: resolveVersion
   };
 });

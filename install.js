@@ -49,7 +49,7 @@ function staticBase() {
 // Collect dependency rows as entries { url, id }, skipping rows with no URL.
 function depEntries() {
   return Array.from(installDepsEl.querySelectorAll('.install-dep-row')).map(row => {
-    const url = row.querySelector('.dep-url').value.trim();
+    const url = Deeplink.toRawGithubURL(row.querySelector('.dep-url').value.trim());
     const id = row.querySelector('.dep-id').value.trim();
     return url ? { url, id: id || null } : null;
   }).filter(Boolean);
@@ -115,7 +115,7 @@ function updateInstallOutput() {
     return;
   }
 
-  const modEntry = { url: modUrl, id: modId };
+  const modEntry = { url: Deeplink.toRawGithubURL(modUrl), id: modId };
   const openUrl = buildOpenUrl(modEntry, depEntries());
   installText.value = formatOutput(openUrl, badgeImg);
   copyInstallBtn.disabled = false;

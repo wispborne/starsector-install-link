@@ -12,7 +12,8 @@ const {
   extractModId,
   extractDependencies,
   readModFile,
-  formatVersion
+  formatVersion,
+  toRawGithubURL
 } = require('../deeplink');
 
 describe('entryToParam', () => {
@@ -329,5 +330,37 @@ describe('formatVersion (client mirror)', () => {
   });
   it('appends a non-numeric patch without a dot', () => {
     assert.equal(formatVersion({ major: '2', minor: '0', patch: 'b' }), '2.0b');
+  });
+});
+
+describe('toRawGithubURL', () => {
+  it('rewrites a github.com blob URL to raw.githubusercontent.com', () => {
+    assert.equal(
+      toRawGithubURL('https://github.com/SirHartley/Corrupt.Officials/blob/master/corruptofficials.version'),
+      'https://raw.githubusercontent.com/SirHartley/Corrupt.Officials/master/corruptofficials.version'
+    );
+  });
+  it('rewrites a github.com raw URL to raw.githubusercontent.com', () => {
+    assert.equal(
+      toRawGithubURL('https://github.com/owner/repo/raw/main/path/Mod.version'),
+      'https://raw.githubusercontent.com/owner/repo/main/path/Mod.version'
+    );
+  });
+  it('strips a ?raw=true query and fragments from a blob URL', () => {
+    assert.equal(
+      toRawGithubURL('https://github.com/owner/repo/blob/main/Mod.version?raw=true#L1'),
+      'https://raw.githubusercontent.com/owner/repo/main/Mod.version'
+    );
+  });
+  it('leaves an already-raw URL unchanged', () => {
+    const url = 'https://raw.githubusercontent.com/owner/repo/master/Mod.version';
+    assert.equal(toRawGithubURL(url), url);
+  });
+  it('leaves a non-github URL unchanged', () => {
+    const url = 'https://example.com/mods/Mod.zip';
+    assert.equal(toRawGithubURL(url), url);
+  });
+  it('returns non-string input unchanged', () => {
+    assert.equal(toRawGithubURL(null), null);
   });
 });
