@@ -58,11 +58,24 @@ Each `mod`/`dep` value is a **JSON object, URL-encoded** as a normal query-strin
 |-------|----------|---------|
 | `url` | yes | Where to get the mod. Either a `.version` file URL or a direct archive (`.zip`) URL. |
 | `id`  | yes (in TriLink) | The mod's `mod_info.json` id (e.g. `nexerelin`). Lets a manager skip a mod that's already installed. |
-| `version` | yes (in TriLink) | The mod version (e.g. `0.11.2`). Paired with `id`, it lets a manager tell whether the *installed* copy is current. A `.version` link fills it in automatically; a `.zip` link can't, so it's typed in. |
+| `version` | optional | A version paired with `id`, used as a floor: a manager skips the entry when the *installed* copy is that version or newer, and installs from `url` otherwise. Its meaning differs by position — see below. |
 
-TriLink requires `id` and `version` on every entry, but a consumer should treat both as
-optional for tolerance — older or hand-built links may omit them, and either is left out of
-the JSON entirely when absent.
+TriLink requires `id` on every entry but treats `version` as optional, and a consumer should
+treat all of `id`/`version` as optional for tolerance — older or hand-built links may omit
+them, and any omitted field is left out of the JSON entirely.
+
+**What `version` means depends on the entry:**
+
+- On the **`mod`** entry it's the version the link installs. A `.version` URL fills it in
+  automatically; a `.zip` can't, so it's typed in (or left blank). When present, a manager
+  can skip the mod if the installed copy is already that version or newer.
+- On a **`dep`** entry it's the dependency's **minimum required version** — opt-in in TriLink
+  via the "Require this version or newer" checkbox (off by default). When omitted, the
+  dependency is installed only when it's missing entirely; when present, a manager installs/
+  upgrades only if the installed copy is below it.
+
+Either way the comparison a manager runs is the same: *installed ≥ `version` → skip, else
+install from `url`.*
 
 Decoded, a single entry looks like:
 

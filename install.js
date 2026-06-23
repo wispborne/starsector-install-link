@@ -29,6 +29,28 @@ const versionDropMsg = document.getElementById('version-drop-msg');
 let installBadgeFile = 'badges/install-badge.svg';
 let installDebounce = null;
 
+// Version-field provenance. A version we wrote ourselves (resolved from a
+// .version link, read from a dropped file, or loaded from a pasted install
+// link) is marked auto-filled so a newer resolution may replace it; the moment
+// the user types in the field they own it, and we never clobber it. Setting
+// `.value` programmatically doesn't fire 'input', so the user-owned flag only
+// clears on real edits.
+function setAutoVersion(input, value) {
+  if (!input) return;
+  input.value = value;
+  input.dataset.versionAuto = '1';
+}
+
+// True when the field is safe to overwrite: empty, or only ever auto-filled.
+function versionReplaceable(input) {
+  return !!input && (!input.value.trim() || input.dataset.versionAuto === '1');
+}
+
+// Clear the auto-filled flag whenever the user edits the field by hand.
+function trackVersionEdits(input) {
+  input.addEventListener('input', () => { delete input.dataset.versionAuto; });
+}
+
 function copyToClipboard(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
     const origHTML = btn.innerHTML;
@@ -47,13 +69,18 @@ function staticBase() {
   return new URL('.', window.location.href).href;
 }
 
-// Collect dependency rows as entries { url, id, version }, skipping rows with no URL.
+// Collect dependency rows as entries { url, id, version }, skipping rows with no
+// URL. A dependency's version is only carried when the author ticks "Require this
+// version or newer" — it's the dependency's MINIMUM required version, not an
+// install target, so it's opt-in. Unchecked (the default) sends no version, and
+// TriOS installs the dependency only when it's missing entirely.
 function depEntries() {
   return Array.from(installDepsEl.querySelectorAll('.install-dep-row')).map(row => {
     const url = Deeplink.toRawGithubURL(row.querySelector('.dep-url').value.trim());
     const id = row.querySelector('.dep-id').value.trim();
     const version = row.querySelector('.dep-version').value.trim();
-    return url ? { url, id: id || null, version: version || null } : null;
+    const requireMin = row.querySelector('.dep-version-min').checked;
+    return url ? { url, id: id || null, version: requireMin && version ? version : null } : null;
   }).filter(Boolean);
 }
 
@@ -61,10 +88,11 @@ function buildOpenUrl(modEntry, deps) {
   return staticBase() + 'open.html?' + Deeplink.buildParams(modEntry, deps).toString();
 }
 
-// The URL, the mod ID, and the version are all required on each dependency. A
-// row that has some but not all is incomplete, so flag it and report the form
-// invalid; a fully blank row is fine (it's skipped). Returns true when every row
-// is complete.
+// The URL and the mod ID are required on each dependency; the version is
+// optional (it rides along only when the author opts into a minimum). A row that
+// has some but not all required fields is incomplete, so flag it and report the
+// form invalid; a fully blank row is fine (it's skipped). Returns true when every
+// row is complete.
 function validateDeps() {
   let valid = true;
   installDepsEl.querySelectorAll('.install-dep-row').forEach(row => {
@@ -80,9 +108,6 @@ function validateDeps() {
     } else if (!id) {
       valid = false;
       setStatus(err, 'Add this dependency’s mod ID.', 'error');
-    } else if (!version) {
-      valid = false;
-      setStatus(err, 'Add this dependency’s version.', 'error');
     } else {
       setStatus(err, '');
     }
@@ -114,17 +139,18 @@ function updateInstallOutput() {
   img.alt = 'install badge preview';
   installBadgePreview.appendChild(img);
 
-  // The mod URL, mod ID, and version are all required, and every dependency must
-  // be complete; otherwise block output so we never emit a link that silently
-  // drops a dependency.
+  // The mod URL and mod ID are required, and every dependency must be complete;
+  // otherwise block output so we never emit a link that silently drops a
+  // dependency. The mod version is optional — when present it's carried so TriOS
+  // can skip the mod if the installed copy is already that version or newer.
   const depsValid = validateDeps();
-  if (!modUrl || !modId || !modVersion || !depsValid) {
+  if (!modUrl || !modId || !depsValid) {
     installText.value = '';
     copyInstallBtn.disabled = true;
     return;
   }
 
-  const modEntry = { url: Deeplink.toRawGithubURL(modUrl), id: modId, version: modVersion };
+  const modEntry = { url: Deeplink.toRawGithubURL(modUrl), id: modId, version: modVersion || null };
   const openUrl = buildOpenUrl(modEntry, depEntries());
   installText.value = formatOutput(openUrl, badgeImg);
   copyInstallBtn.disabled = false;
@@ -156,8 +182,8 @@ function previewVersion(url, targetEl, versionInput) {
     if (targetEl.dataset.url !== url) return;
     if (result && result.data) {
       const v = Deeplink.formatVersion(result.data.modVersion);
-      if (v && versionInput && !versionInput.value.trim()) {
-        versionInput.value = v;
+      if (v && versionReplaceable(versionInput)) {
+        setAutoVersion(versionInput, v);
         updateInstallOutput();
       }
       const label = result.data.modName + (v ? ' v' + v : '');
@@ -215,7 +241,7 @@ function mdField(input, labelText) {
   return wrap;
 }
 
-function addDepRow(url, id, version, focusInput) {
+function addDepRow(url, id, version, focusInput, requireMin) {
   const row = document.createElement('div');
   row.className = 'install-card install-dep-row';
 
@@ -249,8 +275,32 @@ function addDepRow(url, id, version, focusInput) {
   versionInput.className = 'dep-version';
   versionInput.placeholder = 'e.g. 1.2.3';
   versionInput.autocomplete = 'off';
-  if (version) versionInput.value = version;
+  if (version) setAutoVersion(versionInput, version);
   versionInput.addEventListener('input', updateInstallOutput);
+  trackVersionEdits(versionInput);
+
+  // The version is autofilled for convenience but only sent when this is ticked —
+  // it's the dependency's MINIMUM required version, so it's opt-in (off by
+  // default). Unchecked, the dependency installs only when it's missing entirely.
+  const minCheck = document.createElement('input');
+  minCheck.type = 'checkbox';
+  minCheck.className = 'dep-version-min';
+  minCheck.id = 'dep-min-' + (++mdSeq);
+  minCheck.checked = !!requireMin;
+  // The field is editable only while the minimum is required; autofill still
+  // writes to it when disabled (setting .value works regardless), so a dropped
+  // file fills it in ready for when the box is ticked.
+  versionInput.disabled = !minCheck.checked;
+  minCheck.addEventListener('change', () => {
+    versionInput.disabled = !minCheck.checked;
+    updateInstallOutput();
+  });
+  const minLabel = document.createElement('label');
+  minLabel.setAttribute('for', minCheck.id);
+  minLabel.textContent = 'Require this version or newer';
+  const minRow = document.createElement('div');
+  minRow.className = 'dep-version-min-row';
+  minRow.append(minCheck, minLabel);
 
   const preview = document.createElement('p');
   preview.className = 'install-preview';
@@ -292,7 +342,7 @@ function addDepRow(url, id, version, focusInput) {
   idVersionRow.append(mdField(idInput, 'Mod ID'), mdField(versionInput, 'Version'));
 
   // Resolved mod name sits at the top, labeling this dependency's field group.
-  row.append(preview, top, depError, idVersionRow, dropZone, dropMsg);
+  row.append(preview, top, depError, idVersionRow, minRow, dropZone, dropMsg);
   installDepsEl.appendChild(row);
   if (focusInput !== false) input.focus();
   return row;
@@ -323,9 +373,11 @@ function loadFromLink() {
 
   installModInput.value = modEntry.url;
   installModIdInput.value = modEntry.id || '';
-  installModVersionInput.value = modEntry.version || '';
+  setAutoVersion(installModVersionInput, modEntry.version || '');
   installDepsEl.innerHTML = '';
-  deps.forEach(d => addDepRow(d.url, d.id || '', d.version || '', false));
+  // A dep version in the link means the author opted into a minimum, so re-tick
+  // the checkbox to round-trip faithfully.
+  deps.forEach(d => addDepRow(d.url, d.id || '', d.version || '', false, !!d.version));
 
   scheduleInstallUpdate();
   installImportMsg.textContent = `Loaded mod${deps.length ? ` + ${deps.length} ${deps.length === 1 ? 'dependency' : 'dependencies'}` : ''}.`;
@@ -339,6 +391,7 @@ installImportInput.addEventListener('keydown', (e) => {
 installModInput.addEventListener('input', scheduleInstallUpdate);
 installModIdInput.addEventListener('input', updateInstallOutput);
 installModVersionInput.addEventListener('input', updateInstallOutput);
+trackVersionEdits(installModVersionInput);
 addDepBtn.addEventListener('click', () => addDepRow('', '', ''));
 
 // --- mod file drop / browse --------------------------------------------------
@@ -372,21 +425,53 @@ function processModFile(file, targets) {
       return;
     }
     if (result.kind === 'version' && targets.urlInput) {
-      // A .version without a directDownloadURL can't drive a one-click install —
-      // TriOS would have nothing to fetch — so reject it rather than generate a
-      // dead link. The key is matched case-insensitively.
-      if (!Deeplink.getDirectDownloadURL(parsed)) {
-        setStatus(targets.msg, `${file.name} has no directDownloadURL, so one-click installs won't download the mod. Add one to your .version file.`, 'error');
+      // A one-click install needs a directDownloadURL *somewhere*. We store the
+      // remote link (masterVersionFile, preferred), so the download link can live
+      // either in this dropped file or in the remote .version it points at. Fill
+      // the fields and version (optional — a dependency only sends it when the
+      // minimum box is ticked); the key is matched case-insensitively.
+      const accept = () => {
+        targets.urlInput.value = result.url;
+        if (result.version) setAutoVersion(targets.versionInput, result.version);
+        setStatus(targets.msg, ''); // clear any prior message; success is silent
+        scheduleInstallUpdate();
+      };
+
+      if (Deeplink.getDirectDownloadURL(parsed)) {
+        accept(); // dropped file has one — no need to hit the network
         return;
       }
-      targets.urlInput.value = result.url;
-      // A .version carries modVersion, so fill the (required) version field too.
-      if (result.version && targets.versionInput) targets.versionInput.value = result.version;
-      setStatus(targets.msg, ''); // clear any prior error; success is silent
+
+      // No directDownloadURL in the dropped file. result.url is its
+      // masterVersionFile pointer, so resolve that remote .version and check
+      // there before deciding — a file may legitimately defer its download link
+      // to its master.
+      setStatus(targets.msg, 'Checking the remote .version…');
+      Deeplink.resolveVersion(result.url).then(res => {
+        if (res && res.data && res.data.directDownloadURL) {
+          accept(); // the remote supplies the download link
+        } else if (res && res.data) {
+          // Reached the remote, but it has no directDownloadURL either. The fix
+          // differs by role: a mod author can add one to their own .version, but
+          // a dependency is usually someone else's mod, so point them at using a
+          // direct download link for it instead.
+          const isDep = targets.urlInput !== installModInput;
+          const fix = isDep
+            ? 'Use a direct download link instead of a .version file.'
+            : 'Add one to your .version file.';
+          setStatus(targets.msg, `.version file has no directDownloadURL, so TriOS won't be able to download the mod. ${fix}`, 'error');
+        } else {
+          // Couldn't reach the remote (network/CORS). Can't verify, so don't
+          // block — the link may still resolve in TriOS — but say so.
+          accept();
+          setStatus(targets.msg, `Added, but couldn't verify a download link — the remote .version wasn't reachable from your browser. It'll work if the remote has one.`);
+        }
+      });
+      return;
     } else if (result.kind === 'modinfo' && targets.idInput) {
       targets.idInput.value = result.id;
       // mod_info.json carries the version too — fill it so the user needn't retype.
-      if (result.version && targets.versionInput) targets.versionInput.value = result.version;
+      if (result.version) setAutoVersion(targets.versionInput, result.version);
       setStatus(targets.msg, ''); // clear any prior error; success is silent
       // If this mod_info declares dependencies and the user hasn't started a
       // dependency list yet, seed a row per dependency with its mod id (and
