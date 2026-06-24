@@ -13,6 +13,20 @@
 
   var SCHEME = 'starsector-mod://install';
 
+  // Optional CORS relay (see cors-relay/). Some hosts (Bitbucket, Dropbox, …)
+  // don't send cross-origin headers, so the browser can't read their .version
+  // files directly. When set, this is a small self-hosted Cloudflare Worker that
+  // re-fetches the file and adds the missing header. Leave it blank to stay fully
+  // no-backend — links still work either way; only the in-browser preview and the
+  // no-TriOS download fallback lose the ability to resolve those hosts. Set it
+  // here, or define self.TRILINK_CORS_PROXY before this script loads.
+  var CORS_PROXY = (typeof self !== 'undefined' && self.TRILINK_CORS_PROXY) || '';
+
+  // Build the relay URL for a target .version URL. The Worker reads ?url=.
+  function corsProxied(url) {
+    return CORS_PROXY.replace(/\/+$/, '') + '/?url=' + encodeURIComponent(url);
+  }
+
   // Each mod/dep is an entry { url, id?, version? }. The param VALUE is a JSON
   // object, URL-encoded by URLSearchParams — e.g.
   // mod={"url":"https://…","id":"nexerelin","version":"0.11.2"}. `id` and
@@ -224,23 +238,37 @@
     return m[1] + '//raw.githubusercontent.com/' + m[2] + '/' + m[3] + '/' + rest;
   }
 
+  // Browser-only: read the raw text of a .version URL. Tries a direct read first
+  // — that works for hosts that send permissive cross-origin headers (GitHub raw)
+  // — and only when that fails falls back to the configured CORS relay, so hosts
+  // that block cross-origin reads (Bitbucket, Dropbox, …) still resolve. Resolves
+  // to the body string, or null when every attempt fails. Never rejects.
+  function fetchVersionBody(url) {
+    var raw = toRawGithubURL(url);
+    return fetch(raw).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }).catch(function () {
+      if (!CORS_PROXY) return null;
+      return fetch(corsProxied(raw)).then(function (res) {
+        return res.ok ? res.text() : null;
+      }).catch(function () { return null; });
+    });
+  }
+
   // Browser-only: fetch + parse + normalize a .version URL. Requires the vendored
   // Hjson global. Always resolves to { data } or { error } and never rejects, so a
   // CORS/network failure degrades gracefully and never blocks the scheme launch.
   function resolveVersion(url) {
-    return fetch(toRawGithubURL(url)).then(function (res) {
-      if (!res.ok) return { error: 'FETCH_FAILED', message: 'HTTP ' + res.status };
-      return res.text().then(function (body) {
-        var parsed;
-        try {
-          parsed = Hjson.parse(body);
-        } catch (e) {
-          return { error: 'PARSE_FAILED' };
-        }
-        return normalizeVersionData(parsed);
-      });
-    }).catch(function () {
-      return { error: 'FETCH_FAILED', message: 'could not fetch (network or CORS)' };
+    return fetchVersionBody(url).then(function (body) {
+      if (body == null) return { error: 'FETCH_FAILED', message: 'could not fetch (network or CORS)' };
+      var parsed;
+      try {
+        parsed = Hjson.parse(body);
+      } catch (e) {
+        return { error: 'PARSE_FAILED' };
+      }
+      return normalizeVersionData(parsed);
     });
   }
 

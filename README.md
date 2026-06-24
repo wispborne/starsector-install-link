@@ -7,6 +7,11 @@ installed clicks the badge and the mod (and any dependencies) installs in one st
 There is nothing to run server-side: it's a folder of static files. Open it locally or publish
 it to GitHub Pages unchanged.
 
+There's one optional extra: a small [CORS relay](cors-relay/) you can deploy so the page can
+read `.version` files from hosts that block cross-origin reads (Bitbucket, Dropbox, …). It's
+not required — the install button works without it — and the site stays fully static if you
+skip it. See [cors-relay/README.md](cors-relay/README.md).
+
 ## What's here
 
 | File | Role |
@@ -21,6 +26,7 @@ it to GitHub Pages unchanged.
 | `scripts/gen-install-badges.js` | Dev tool that regenerates the badge SVGs. Self-contained — no dependencies. |
 | `tests/deeplink.test.js` | Unit tests for `deeplink.js`. |
 | `tests/version.test.js` | Unit tests for `version.js`. |
+| `cors-relay/` | Optional Cloudflare Worker that lets the browser read `.version` files from hosts that block cross-origin reads. Off by default. |
 
 ## How it works
 

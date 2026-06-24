@@ -48,7 +48,8 @@
                 working <code>directDownloadURL</code> or to your mod's <code>.zip</code>
                 download.</li>
               <li><strong>Mod ID &amp; version</strong>. From your <code>mod_info.json</code> /
-                <code>.version</code>. Lets TriOS skip the mod download if it's already installed.</li>
+                <code>.version</code>. Lets TriOS skip the mod download if it's already installed.
+              </li>
             </ol>
 
             <div class="install-card">
@@ -109,15 +110,18 @@
 
           <label style="margin-top:16px">Left badge color</label>
           <div id="install-label-colors" class="color-swatches">
-            <button type="button" class="swatch selected" data-color="" style="background:#1e2c4e" title="TriOS navy"></button>
+            <button type="button" class="swatch selected" data-color="" style="background:#1e2c4e"
+              title="TriOS navy"></button>
             <button type="button" class="swatch" data-color="-gray" style="background:#555555" title="Gray"></button>
           </div>
 
           <label style="margin-top:16px">Right badge color</label>
           <div id="install-swatches" class="color-swatches">
-            <button type="button" class="swatch selected" data-color="" style="background:#49fcff" title="Cyan"></button>
+            <button type="button" class="swatch selected" data-color="" style="background:#49fcff"
+              title="Cyan"></button>
             <button type="button" class="swatch" data-color="-blue" style="background:#42a5f5" title="Blue"></button>
-            <button type="button" class="swatch" data-color="-purple" style="background:#ab47bc" title="Purple"></button>
+            <button type="button" class="swatch" data-color="-purple" style="background:#ab47bc"
+              title="Purple"></button>
             <button type="button" class="swatch" data-color="-green" style="background:#66bb6a" title="Green"></button>
             <button type="button" class="swatch" data-color="-amber" style="background:#ffca28" title="Amber"></button>
             <button type="button" class="swatch" data-color="-red" style="background:#ef5350" title="Red"></button>
@@ -128,8 +132,7 @@
             <button type="button" class="style-option selected" data-style="" title="Flat">
               <img src="badges/install-badge.svg" alt="Flat badge style">
             </button>
-            <button type="button" class="style-option" data-style="-forthebadge"
-              title="For the badge">
+            <button type="button" class="style-option" data-style="-forthebadge" title="For the badge">
               <img src="badges/install-badge-forthebadge.svg" alt="For-the-badge style">
             </button>
           </div>
@@ -220,7 +223,8 @@
       <details class="faq-item">
         <summary>Should I use a .version URL or a .zip link?</summary>
         <div class="faq-answer">
-          <p>A <code>.version</code> file URL if you can. It auto-fills the mod version. It also means you only have to update
+          <p>A <code>.version</code> file URL if you can. It auto-fills the mod version. It also means you only have to
+            update
             your .version file if your download links change, not this button.</p>
           <br />
           <p>A <code>.zip</code> (or .7z, .rar, etc) link works too.</p>
@@ -232,6 +236,25 @@
         <div class="faq-answer">
           <p>The mod id and version let TriOS recognize a mod
             that's already installed and skip re-downloading it so players don't redownload LazyLib 100 times.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What happens when a dependency updates? Will my button break?</summary>
+        <div class="faq-answer">
+          <p>No, your button keeps working. What it installs depends on the kind of link you used:</p>
+          <br />
+          <p>If you used a <code>.version</code> link, players always get the newest version. When LazyLib releases an
+            update, the same button starts installing the new one.</p>
+          <br />
+          <p>If you used a <code>.zip</code> link, players always get that exact file. It won't change until you swap in
+            a new link yourself, so if the mod author breaks that download link, your download link will break.</p>
+          <br />
+          <p><strong>Note</strong>: TriOS won't redownload mods the player already has <strong>unless</strong> you enter a
+            version, check the "Require this version or newer" checkbox, and the player has an old version of the mod.
+          </p>
+          <br />
+          <p>So, if you link to LazyLib 3.0 and don't check that box and they have LazyLib 2.7, it won't download LazyLib. But if you fill in the version as 3.0 and check the box, it will update their version of LazyLib.</p>
         </div>
       </details>
 
@@ -270,7 +293,8 @@
       </button>
     </nav>
     <nav>
-      <span class="footer-label">Not affiliated with Fractal Softworks</span></nav>
+      <span class="footer-label">Not affiliated with Fractal Softworks</span>
+    </nav>
   </footer>
 
   <dialog id="license-dialog" class="license-dialog">
